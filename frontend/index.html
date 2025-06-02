@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Todo Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Todo App</h2>
+    <button class="logout" onclick="logout()">Logout</button>
+
+    <div class="section">
+      <h3>Categories</h3>
+      <form id="categoryForm">
+        <input type="text" id="newCategory" placeholder="New Category">
+        <button type="submit">Add Category</button>
+      </form>
+      <select id="categoryList"></select>
+    </div>
+
+    <div class="section">
+      <h3>Todos</h3>
+      <form id="todoForm">
+        <input type="text" id="todoText" placeholder="New Todo">
+        <button type="submit">Add Todo</button>
+      </form>
+      <ul id="todoList"></ul>
+    </div>
+  </div>
+
+  <script>
+    const API = 'http://localhost:5000/api';
+    const token = localStorage.getItem('token');
+    if (!token) window.location.href = 'login.html';
+
+    async function fetchCategories() {
+      const res = await fetch(`${API}/categories`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const categories = await res.json();
+      const select = document.getElementById('categoryList');
+      select.innerHTML = '';
+      categories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat._id;
+        opt.innerText = cat.name;
+        select.appendChild(opt);
+      });
+    }
+
+    async function fetchTodos() {
+      const res = await fetch(`${API}/todos`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const todos = await res.json();
+      const list = document.getElementById('todoList');
+      list.innerHTML = '';
+      todos.forEach(todo => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${todo.text} (${todo.categoryId?.name || 'Uncategorized'})</span>
+          <button onclick="deleteTodo('${todo._id}')">Delete</button>`;
+        list.appendChild(li);
+      });
+    }
+
+    document.getElementById('todoForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = document.getElementById('todoText').value;
+      const categoryId = document.getElementById('categoryList').value;
+      await fetch(`${API}/todos`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text, categoryId })
+      });
+      fetchTodos();
+    });
+
+    document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newCategory').value;
+      await fetch(`${API}/categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ name })
+      });
+      fetchCategories();
+    });
+
+    async function deleteTodo(id) {
+      await fetch(`${API}/todos/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchTodos();
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = 'login.html';
+    }
+
+    fetchCategories();
+    fetchTodos();
+  </script>
+</body>
+</html>
